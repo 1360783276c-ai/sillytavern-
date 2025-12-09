@@ -1,14 +1,14 @@
 .mood-manager-settings .flex-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 .mood-manager-settings label {
-    width: 80px;
+  width: 80px;
 }
 .mood-manager-settings .text_pole {
-    flex-grow: 1;
+  flex-grow: 1;
 }
 
 .floating-ball {
@@ -25,7 +25,7 @@
   user-select: none;
   z-index: 10000;
   font-size: 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .status-panel {
@@ -35,7 +35,7 @@
   color: black;
   border: 1px solid #ccc;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 9999;
   cursor: grab;
 }
@@ -46,4 +46,40 @@
 }
 .panel-content {
   padding: 12px;
+}
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+.api-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.api-indicator.gray {
+  background-color: gray;
+}
+.api-indicator.green {
+  background-color: #28a745;
+}
+.api-indicator.red {
+  background-color: #dc3545;
+}
+.api-indicator.yellow {
+  background-color: #ffc107;
+}
+#api-status-url {
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8em;
+  color: #555;
+}
+#api-test-button {
+  padding: 2px 8px;
+  font-size: 0.8em;
 }
