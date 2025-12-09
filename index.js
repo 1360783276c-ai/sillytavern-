@@ -7,16 +7,7 @@
 (function () {
     'use strict';
 
-    // 存储插件状态
-    let settings = {
-        isEnabled: true,
-        apiUrl: '',
-        apiKey: '',
-    };
-    let mood = {
-        user: 'N/A',
-        character: 'N/A',
-    };
+    // 不再使用全局变量缓存设置，总是在需要时从 SillyTavern 上下文读取
 
     // --- UI 创建 ---
 
@@ -49,8 +40,8 @@
                 <button id="api-test-button" class="menu_button">测试</button>
               </div>
               <hr>
-              <p>用户状态: <span id="mood-user">${mood.user}</span></p>
-              <p>角色状态: <span id="mood-char">${mood.character}</span></p>
+              <p>用户状态: <span id="mood-user">N/A</span></p>
+              <p>角色状态: <span id="mood-char">N/A</span></p>
             </div>
         `;
         document.body.appendChild(panel);
@@ -59,6 +50,7 @@
     }
 
     function createSettingsUI() {
+        const currentSettings = getSettings();
         const settingsHtml = `
             <div id="mood-manager-settings" class="mood-manager-settings">
                 <div class="inline-drawer">
@@ -69,14 +61,14 @@
                     <div class="inline-drawer-content">
                         <div class="example-extension_block flex-container">
                             <label for="mood-api-url">API URL:</label>
-                            <input type="text" id="mood-api-url" class="text_pole" value="${settings.apiUrl}" />
+                            <input type="text" id="mood-api-url" class="text_pole" value="${currentSettings.apiUrl}" />
                         </div>
                         <div class="example-extension_block flex-container">
                             <label for="mood-api-key">API Key:</label>
-                            <input type="text" id="mood-api-key" class="text_pole" value="${settings.apiKey}" />
+                            <input type="text" id="mood-api-key" class="text_pole" value="${currentSettings.apiKey}" />
                         </div>
                         <div class="example-extension_block flex-container">
-                            <input type="checkbox" id="mood-enabled" ${settings.isEnabled ? 'checked' : ''} />
+                            <input type="checkbox" id="mood-enabled" ${currentSettings.isEnabled ? 'checked' : ''} />
                             <label for="mood-enabled">启用插件</label>
                         </div>
                     </div>
@@ -85,36 +77,34 @@
         $('#extensions_settings2').append(settingsHtml);
 
         // Bind events
-        $('#mood-api-url').on('input', function() { settings.apiUrl = $(this).val(); saveSettings(); updateApiStatusUI(); });
-        $('#mood-api-key').on('input', function() { settings.apiKey = $(this).val(); saveSettings(); });
-        $('#mood-enabled').on('change', function() { settings.isEnabled = $(this).is(':checked'); saveSettings(); });
-        // We need to use event delegation for the button since the panel is created dynamically
+        $('#mood-api-url').on('input', function() { saveSettings({ apiUrl: $(this).val() }); updateApiStatusUI(); });
+        $('#mood-api-key').on('input', function() { saveSettings({ apiKey: $(this).val() }); });
+        $('#mood-enabled').on('change', function() { saveSettings({ isEnabled: $(this).is(':checked') }); });
         $(document).on('click', '#api-test-button', testApiConnection);
     }
 
     // --- 核心逻辑 ---
 
     async function onMessageUpdate() {
-        if (!settings.isEnabled || !settings.apiUrl) return;
+        const currentSettings = getSettings();
+        if (!currentSettings.isEnabled || !currentSettings.apiUrl) return;
 
         const latestMessage = SillyTavern.chat.slice(-1)[0];
         if (!latestMessage) return;
 
         try {
-            const response = await fetch(settings.apiUrl, {
+            const response = await fetch(currentSettings.apiUrl, {
                 method: 'POST',
-                headers: { ...SillyTavern.getRequestHeaders(), 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+                headers: { ...SillyTavern.getRequestHeaders(), 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSettings.apiKey}` },
                 body: JSON.stringify({ text: latestMessage.mes, is_user: latestMessage.is_user }),
             });
             if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
             const data = await response.json();
             
             if (latestMessage.is_user) {
-                mood.user = data.mood;
-                $('#mood-user').text(mood.user);
+                $('#mood-user').text(data.mood);
             } else {
-                mood.character = data.mood;
-                $('#mood-char').text(mood.character);
+                $('#mood-char').text(data.mood);
             }
             setApiIndicator('green');
         } catch (error) {
@@ -157,28 +147,30 @@
         });
     }
 
-    function saveSettings() {
-        if (SillyTavern.getContext) {
-            const context = SillyTavern.getContext();
-            context.extensionSettings.mood_manager = settings;
-            context.saveSettingsDebounced();
+    function getSettings() {
+        const context = SillyTavern.getContext();
+        return context.extensionSettings.mood_manager || {};
+    }
+
+    function saveSettings(newSettings) {
+        const context = SillyTavern.getContext();
+        if (!context.extensionSettings.mood_manager) {
+            context.extensionSettings.mood_manager = {};
         }
+        Object.assign(context.extensionSettings.mood_manager, newSettings);
+        context.saveSettingsDebounced();
     }
 
     function loadSettings() {
-        if (SillyTavern.getContext) {
-            const context = SillyTavern.getContext();
-            if (context.extensionSettings.mood_manager) {
-                Object.assign(settings, context.extensionSettings.mood_manager);
-            }
-        }
+        // No longer needed as we always read fresh settings
         updateApiStatusUI();
     }
     
     function updateApiStatusUI() {
+        const currentSettings = getSettings();
         const urlSpan = document.getElementById('api-status-url');
         if (urlSpan) {
-            urlSpan.textContent = settings.apiUrl || '未配置 API';
+            urlSpan.textContent = currentSettings.apiUrl || '未配置 API';
         }
     }
 
@@ -190,16 +182,17 @@
     }
 
     async function testApiConnection() {
-        if (!settings.apiUrl) {
+        const currentSettings = getSettings();
+        if (!currentSettings.apiUrl) {
             toastr.warning('请先填写 API URL。');
             return;
         }
         toastr.info('正在测试 API 连接...');
         setApiIndicator('yellow');
         try {
-            const response = await fetch(settings.apiUrl, {
+            const response = await fetch(currentSettings.apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSettings.apiKey}` },
                 body: JSON.stringify({ text: 'test', is_user: true }), // Send a dummy test request
             });
             if (!response.ok) throw new Error(`API returned status ${response.status}`);
