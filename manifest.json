@@ -1,7 +1,8 @@
 {
   "name": "角色状态心情管理",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "通过API分析并展示角色和用户的心情状态。",
-  "script": "index.js",
+  "js": "index.js",
+  "css": "style.css",
   "author": "1360783276c-ai & Kilo Code"
 }
